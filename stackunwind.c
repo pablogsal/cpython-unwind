@@ -9,6 +9,57 @@
 #include <stdio.h>
 #include <stdlib.h>
 
+// Get the current frame pointer
+#if defined(__x86_64__)
+#define GET_FRAME_POINTER(fp) asm volatile("movq %%rbp, %0" : "=r"(fp))
+#elif defined(__i386__)
+#define GET_FRAME_POINTER(fp) asm volatile("movl %%ebp, %0" : "=r"(fp))
+#else
+#error "Architecture not supported"
+#endif
+
+void print_stack_frames(void) {
+  printf("Stack trace (most recent call first):\n");
+}
+
+// Manual frame pointer unwinding implementation
+static PyObject *get_stack_frame_pointer(PyObject *self, PyObject *args) {
+  void *addresses[100];
+  int frame_count = 0;
+  PyObject *result;
+
+  // Get current frame pointer
+  uintptr_t *frame_pointer;
+  GET_FRAME_POINTER(frame_pointer);
+
+  // Walk the frame chain
+  while (frame_pointer) {
+    // The frame pointer points to the saved previous frame pointer
+    // The return address is stored right after it
+    uintptr_t return_addr = *(frame_pointer + 1);
+
+    addresses[frame_count++] = (void *)return_addr;
+
+    // Move to the previous frame
+    // frame_pointer[0] contains the saved previous frame pointer
+    frame_pointer = (uintptr_t *)*frame_pointer;
+
+    frame_count++;
+
+    // Basic sanity check for frame pointer
+    if ((uintptr_t)frame_pointer < 0x1000) {
+      break;
+    }
+  }
+
+  // Create Python list of frame information
+  result = PyList_New(frame_count);
+  for (int i = 0; i < frame_count; i++) {
+    PyList_SET_ITEM(result, i, PyUnicode_FromFormat("%p", addresses[i]));
+  }
+  return result;
+}
+
 // GNU Backtrace implementation
 static PyObject *get_stack_gnu(PyObject *self, PyObject *args) {
   void *buffer[100];
@@ -131,6 +182,8 @@ static PyMethodDef StackMethods[] = {
      "Get stack trace using libunwind"},
     {"get_stack_dwarf", get_stack_dwarf, METH_NOARGS,
      "Get stack trace using libdw"},
+    {"get_stack_frame_pointer", get_stack_frame_pointer, METH_NOARGS,
+     "Get stack trace by manually walking frame pointers"},
     {NULL, NULL, 0, NULL}};
 
 static struct PyModuleDef stackmodule = {

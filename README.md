@@ -7,9 +7,9 @@ This Python C extension provides stack unwinding capabilities using three differ
 
 ## Unwinders
 
-- `get_stack_gnu()`: Fast stack unwinding using GNU's backtrace functions
-- `get_stack_unwind()`: Detailed stack unwinding using libunwind
-- `get_stack_dwarf()`: Advanced stack unwinding with DWARF debug information using libdw
+- `get_stack_gnu()`: Stack unwinding using GNU's backtrace functions
+- `get_stack_unwind()`: Stack unwinding using libunwind
+- `get_stack_dwarf()`: Stack unwinding using libdw
 
 ## Requirements
 
