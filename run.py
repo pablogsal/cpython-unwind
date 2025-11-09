@@ -4,7 +4,6 @@ import os
 import sys
 import time
 
-
 # ANSI color codes
 class Colors:
     RESET = '\033[0m'
@@ -36,14 +35,34 @@ METHOD_COLORS = {
     'elfutils native (remote)': Colors.BLUE,
 }
 
+_result = None
+_jit_active = False
 
-def foo(n, unwinder):
-    if not n:
-        return unwinder()
-    for _ in range(2):
-        x = operator.call(foo, n - 1, unwinder)
-    return x
+def call_operator(n, unwinder, jit_active):
+    if not _jit_active:
+        return None
+    if _result is not None:
+        return _result
+    return operator.call(foo, n - 1, unwinder, False)
 
+def foo(n, unwinder, first_call=True):
+    global _result
+    global _jit_active
+    if first_call:
+        _result = None
+        _jit_active = False
+
+    total = 0
+    if n == 0:
+       if _result is None:
+           _result = unwinder()
+       return _result
+
+    for i in range(5000):
+        total += 1
+        _jit_active = sys._jit.is_active() if sys._jit.is_enabled() else True
+        x = call_operator(n, unwinder, _jit_active)
+    return _result
 
 def print_section(title, color=Colors.BLUE):
     """Print a section header"""
@@ -105,16 +124,10 @@ def child_process():
     level_1()
 
 
+
 if __name__ == "__main__":
     # Show JIT status at start
-    jit_info = get_jit_status()
-    if jit_info:
-        print(f"\n{Colors.BOLD}{Colors.YELLOW}Python JIT Status:{Colors.RESET}")
-        print(f"  Available: {Colors.GREEN if jit_info['available'] else Colors.RED}{jit_info['available']}{Colors.RESET}")
-        print(f"  Enabled:   {Colors.GREEN if jit_info['enabled'] else Colors.RED}{jit_info['enabled']}{Colors.RESET}")
-        print(f"  Active:    {Colors.GREEN if jit_info['active'] else Colors.RED}{jit_info['active']}{Colors.RESET}")
-
-    # Get stack trace using different methods (local unwinding)
+   # Get stack trace using different methods (local unwinding)
     print_section("Local Stack Unwinding Tests", Colors.BLUE)
     print(f"\n{Colors.BOLD}Testing various unwinding methods on the same deep call stack...{Colors.RESET}")
 
