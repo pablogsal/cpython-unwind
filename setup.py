@@ -3,7 +3,7 @@ from setuptools import setup, Extension
 stackunwind_module = Extension(
     "stackunwind",
     sources=["stackunwind.c"],
-    libraries=["unwind", "dw", "elf"],
+    libraries=["unwind", "unwind-ptrace", "unwind-x86_64", "dw", "elf"],
     extra_compile_args=["-g", "-O0"],  # Include debug symbols
     extra_link_args=["-g"],
 )
