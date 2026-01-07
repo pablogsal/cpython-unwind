@@ -45,24 +45,17 @@ def call_operator(n, unwinder, jit_active):
         return _result
     return operator.call(foo, n - 1, unwinder, False)
 
-def foo(n, unwinder, first_call=True):
-    global _result
-    global _jit_active
-    if first_call:
-        _result = None
-        _jit_active = False
-
-    total = 0
+def foo(n, unwinder, warming_up_caller=False):
+    if warming_up_caller:
+        return 
     if n == 0:
-       if _result is None:
-           _result = unwinder()
-       return _result
-
-    for i in range(5000):
-        total += 1
-        _jit_active = sys._jit.is_active() if sys._jit.is_enabled() else True
-        x = call_operator(n, unwinder, _jit_active)
-    return _result
+        return unwinder()
+    warming_up = True
+    while warming_up:
+        # Can't branch on JIT state in JIT code, so pass it through C:
+        warming_up = sys._jit.is_enabled() and not sys._jit.is_active()
+        result = operator.call(foo, n - 1, unwinder, warming_up)
+    return result
 
 def print_section(title, color=Colors.BLUE):
     """Print a section header"""
